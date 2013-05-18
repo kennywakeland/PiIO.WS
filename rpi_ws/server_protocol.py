@@ -1,21 +1,25 @@
-from twisted.python import log
-from twisted.internet import threads, reactor
-import twisted.internet.protocol as twistedsockets
-from autobahn.websocket import WebSocketServerFactory, WebSocketServerProtocol, HttpException
-import autobahn.httpstatus as httpstatus
-from twisted.web import resource
 import json
 import time
 import os
 import binascii
 import hashlib
-import settings, common_protocol, buffer
 from hashlib import sha1
 import hmac
-import urllib2, urllib
-import math
+import urllib2
+import urllib
 
+from autobahn.websocket import WebSocketServerFactory, WebSocketServerProtocol, HttpException
+import autobahn.httpstatus as httpstatus
+
+from twisted.python import log
+from twisted.internet import threads, reactor
+import twisted.internet.protocol as twistedsockets
+from twisted.web import resource
+import settings
+import common_protocol
+import buffer
 import twisted.internet.interfaces
+
 
 class SiteComm(resource.Resource):
     """
@@ -60,7 +64,7 @@ class SiteComm(resource.Resource):
         payload['ip'] = rpi.protocol.peer.host
         payload['iface'] = rpi.iface
 
-        post_data = {'json':json.dumps(payload)}
+        post_data = {'json': json.dumps(payload)}
         post_data = urllib.urlencode(post_data)
         try:
             url = urllib2.Request('http://%s/ws_comm/register/' % settings.SITE_SERVER_ADDRESS, post_data)
@@ -68,7 +72,7 @@ class SiteComm(resource.Resource):
             url_response.read()
         except:
             pass
-        # TODO: success validation
+            # TODO: success validation
 
         # notify users
         reactor.callFromThread(self.ws_factory.register_rpi_wsite, rpi)
@@ -79,7 +83,7 @@ class SiteComm(resource.Resource):
         payload = {}
         payload['mac'] = rpi.mac
 
-        post_data = {'json':json.dumps(payload)}
+        post_data = {'json': json.dumps(payload)}
         post_data = urllib.urlencode(post_data)
         try:
             url = urllib2.Request('http://%s/ws_comm/disconnect/' % settings.SITE_SERVER_ADDRESS, post_data)
@@ -104,6 +108,7 @@ class ServerState(common_protocol.State):
         if self.client.protocol.debug:
             log.msg("%s.deactivated()" % self.__class__.__name__)
 
+
 class Client(common_protocol.ProtocolState):
     def __init__(self, protocol):
         common_protocol.ProtocolState.__init__(self)
@@ -123,9 +128,11 @@ class Client(common_protocol.ProtocolState):
     def onOpen(self):
         pass
 
+
 """
 User client related protocol
 """
+
 
 class UserClient(Client):
     def __init__(self, protocol):
@@ -167,7 +174,7 @@ class UserClient(Client):
                                                self.streaming_buffer_write)
 
         if len(self.streaming_buffer_read) > 0 or len(self.streaming_buffer_write) > 0:
-            msg = {'cmd':common_protocol.ServerCommands.WRITE_DATA}
+            msg = {'cmd': common_protocol.ServerCommands.WRITE_DATA}
             msg['read'] = self.streaming_buffer_read
             msg['write'] = self.streaming_buffer_write
             self.ackcount -= 1
@@ -187,7 +194,7 @@ class UserClient(Client):
         if state == 'config':
             if self.associated_rpi is not rpi:
                 return
-        msg = {'cmd':common_protocol.ServerCommands.RPI_STATE_CHANGE, 'rpi_mac':rpi.mac, 'rpi_state':state}
+        msg = {'cmd': common_protocol.ServerCommands.RPI_STATE_CHANGE, 'rpi_mac': rpi.mac, 'rpi_state': state}
         self.protocol.sendMessage(json.dumps(msg))
 
     def onMessage(self, msg):
@@ -220,14 +227,17 @@ class UserClient(Client):
     def onOpen(self):
         self.protocol.factory.register_user(self)
 
+
 """
 RPI client related protocol and states
 """
+
 
 class RPIStreamState(ServerState):
     """
     In this state the RPI has been configured and is streaming data
     """
+
     def __init__(self, client, reads, writes):
         super(RPIStreamState, self).__init__(client)
         # {'cls:ADC, port:3': {'cls_name':'ADC', 'ch_port':3, 'equations': ['zzzz', 'asdfadfad']}}
@@ -300,39 +310,39 @@ class RPIStreamState(ServerState):
                         )
                         self.write_data_eq_map[new_key] = key
                         self.write_data_buffer_eq[new_key] = {
-                            'calculated':self.evaluate_eq(eq, value),
-                            'real':value,
+                            'calculated': self.evaluate_eq(eq, value),
+                            'real': value,
                         }
                 else:
                     # TODO: drop to config state or something, remote config seems to be invalid
                     pass
-            # notify factory to update listening clients
+                # notify factory to update listening clients
             if self.datamsgcount_ack >= 5:
-                msg = {'cmd':common_protocol.ServerCommands.ACK_DATA, 'ack_count':self.datamsgcount_ack}
+                msg = {'cmd': common_protocol.ServerCommands.ACK_DATA, 'ack_count': self.datamsgcount_ack}
                 self.client.protocol.sendMessage(json.dumps(msg))
                 self.datamsgcount_ack = 0
-            # notify factory of new data event
+                # notify factory of new data event
             self.client.protocol.factory.rpi_new_data_event(self.client)
 
     def resume_streaming(self):
-        msg = {'cmd':common_protocol.ServerCommands.RESUME_STREAMING}
+        msg = {'cmd': common_protocol.ServerCommands.RESUME_STREAMING}
         self.client.protocol.sendMessage(json.dumps(msg))
 
     def pause_streaming(self):
-        msg = {'cmd':common_protocol.ServerCommands.PAUSE_STREAMING}
+        msg = {'cmd': common_protocol.ServerCommands.PAUSE_STREAMING}
         self.client.protocol.sendMessage(json.dumps(msg))
 
     def write_interface_data(self, key, value):
         # removes the EQ from the key sent by the client
         config_key = self.write_data_eq_map[key]
-        msg = {'cmd':common_protocol.ServerCommands.WRITE_DATA,
-               'iface_port':config_key,
-               'value':value}
+        msg = {'cmd': common_protocol.ServerCommands.WRITE_DATA,
+               'iface_port': config_key,
+               'value': value}
         self.client.protocol.sendMessage(json.dumps(msg))
 
     def drop_to_config(self, reads, writes):
         # drop remote RPI to config state
-        msg = {'cmd':common_protocol.ServerCommands.DROP_TO_CONFIG}
+        msg = {'cmd': common_protocol.ServerCommands.DROP_TO_CONFIG}
         self.client.protocol.sendMessage(json.dumps(msg))
         self.delegate_config_reads = reads
         self.delegate_config_writes = writes
@@ -343,6 +353,7 @@ class RPIConfigState(ServerState):
     In this state, the RPI is waiting to be configured.
     Server is not required to configure the RPI immediately.
     """
+
     def __init__(self, client):
         super(RPIConfigState, self).__init__(client)
 
@@ -351,13 +362,13 @@ class RPIConfigState(ServerState):
 
         if msg['cmd'] == common_protocol.RPIClientCommands.CONFIG_OK:
             self.client.push_state(RPIStreamState(self.client,
-                reads=self.config_reads,
-                writes=self.config_writes
+                                                  reads=self.config_reads,
+                                                  writes=self.config_writes
             ))
         elif msg['cmd'] == common_protocol.RPIClientCommands.CONFIG_FAIL:
             if self.client.protocol.debug:
                 log.msg('RPIConfigState - RPI failed to configure')
-            # TODO: Notify web server
+                # TODO: Notify web server
 
     def config_io(self, reads, writes):
         """
@@ -389,7 +400,7 @@ class RPIConfigState(ServerState):
 
                 key = 'cls:%s, port:%s' % (cls_str, ch_port)
                 if key not in instanced_io_dict:
-                    io_new_dict = {'cls_name':cls_str, 'ch_port':ch_port}
+                    io_new_dict = {'cls_name': cls_str, 'ch_port': ch_port}
                     io_new_dict['equations'] = [equation]
                     instanced_io_dict[key] = io_new_dict
                 else:
@@ -410,8 +421,8 @@ class RPIConfigState(ServerState):
         if self.client.protocol.debug:
             log.msg('RPIConfigState - Pushing configs to remote RPI')
 
-        msg = {'cmd':common_protocol.ServerCommands.CONFIG,
-               'payload':{'read':self.config_reads, 'write':self.config_writes}}
+        msg = {'cmd': common_protocol.ServerCommands.CONFIG,
+               'payload': {'read': self.config_reads, 'write': self.config_writes}}
 
         self.client.protocol.sendMessage(json.dumps(msg))
 
@@ -450,7 +461,7 @@ class RPIRegisterState(ServerState):
                 self.re_message_count = 0
                 if self.client.protocol.debug:
                     log.msg("RPIClient.onMessage - Successful registration")
-                self.client.protocol.sendMessage(json.dumps({'cmd':common_protocol.ServerCommands.ACK}))
+                self.client.protocol.sendMessage(json.dumps({'cmd': common_protocol.ServerCommands.ACK}))
                 self.client.push_state(RPIConfigState(self.client))
                 # add to dictionary of clients in the factory
                 self.client.protocol.factory.register_rpi(self.client)
@@ -471,9 +482,8 @@ class RPIRegisterState(ServerState):
         self.hamc_token = binascii.b2a_base64(hashed.digest())[:-1]
 
         # send token
-        msg = {'cmd':common_protocol.ServerCommands.AUTH, 'payload':{'token':self.rand_token}}
+        msg = {'cmd': common_protocol.ServerCommands.AUTH, 'payload': {'token': self.rand_token}}
         self.client.protocol.sendMessage(json.dumps(msg))
-
 
 
 class RPIClient(Client):
@@ -586,6 +596,7 @@ class RPIServerProtocol(WebSocketServerProtocol):
             if self.debug:
                 log.msg("RPIServerProtocol.onConnect - User connected")
             return UserClient(self)
+
         def rpi(headers):
             # check user agent
             if 'user-agent' in headers:
@@ -596,9 +607,9 @@ class RPIServerProtocol(WebSocketServerProtocol):
             raise HttpException(httpstatus.HTTP_STATUS_CODE_FORBIDDEN[0], httpstatus.HTTP_STATUS_CODE_FORBIDDEN[1])
 
         paths = {
-            '/':user,
-            '/rpi/':rpi,
-            '/rpi':rpi,
+            '/': user,
+            '/rpi/': rpi,
+            '/rpi': rpi,
         }
 
         if connectionRequest.path not in paths:
@@ -640,6 +651,7 @@ class RPISocketServerFactory(WebSocketServerFactory):
     """
     Manages every RPI connected to the server.
     """
+
     def __init__(self, *args, **kwargs):
         WebSocketServerFactory.__init__(self, *args, **kwargs)
 
@@ -762,9 +774,10 @@ class FlashSocketPolicyServerProtocol(twistedsockets.Protocol):
     Flash Socket Policy for web-socket-js fallback
     http://www.adobe.com/devnet/flashplayer/articles/socket_policy_files.html
     """
+
     def connectionMade(self):
-        policy = '<?xml version="1.0"?><!DOCTYPE cross-domain-policy SYSTEM '\
-                 '"http://www.macromedia.com/xml/dtds/cross-domain-policy.dtd">'\
+        policy = '<?xml version="1.0"?><!DOCTYPE cross-domain-policy SYSTEM ' \
+                 '"http://www.macromedia.com/xml/dtds/cross-domain-policy.dtd">' \
                  '<cross-domain-policy><allow-access-from domain="*" to-ports="*" /></cross-domain-policy>'
         self.transport.write(policy)
         self.transport.loseConnection()

@@ -1,5 +1,6 @@
 from twisted.python import log
 
+
 class State(object):
     def onMessage(self, msg):
         raise NotImplementedError("Should have implemented this")
@@ -34,11 +35,13 @@ class ServerCommands(object):
 
     RPI_STATE_CHANGE = 'rpi_schange'
 
+
 class RPIClientCommands(object):
     CONFIG_OK = 'c_ok'
     CONFIG_FAIL = 'c_fail'
     DROP_TO_CONFIG_OK = 'drop_to_config_ok'
     DATA = 'data'
+
 
 class UserClientCommands(object):
     CONNECT_RPI = 'rpi_connect'

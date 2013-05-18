@@ -1,12 +1,15 @@
-import time
-import random
 # SPI adc by blaisejarrett
 from RPiBJ import SPIADC
 # GPIO: http://code.google.com/p/raspberry-gpio-python/
 from RPi import GPIO
 
-class CHPortInUseException(Exception): pass
-class CHPortDoesntExistException(Exception): pass
+
+class CHPortInUseException(Exception):
+    pass
+
+
+class CHPortDoesntExistException(Exception):
+    pass
 
 
 class IBase(object):
@@ -106,6 +109,8 @@ class IWrite(IBase):
 
 
 SPIADC.setup(0, 100000)
+
+
 class ADC(IRead):
     """
     Maps to ADC using library
@@ -134,7 +139,10 @@ class ADC(IRead):
     def read(self):
         return SPIADC.read(self.ch_port)
 
+
 GPIO.setmode(GPIO.BCM)
+
+
 class GPIOInput(IRead):
     """
     Maps to GPIO read only
@@ -213,8 +221,6 @@ class GPIOOutput(IWrite):
             # throw?
             return
         super(GPIOOutput, self).write(value)
-
-
 
 
 def get_interface_desc():

@@ -8,7 +8,7 @@ def get_mac():
     """
     mac_int = uuid.getnode()
     mac_str = hex(mac_int)[2:].zfill(12).upper()
-    mac = ':'.join([mac_str[i:i+2] for i in xrange(0, 12, 2)])
+    mac = ':'.join([mac_str[i:i + 2] for i in xrange(0, 12, 2)])
     return mac
 
 

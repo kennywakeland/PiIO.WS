@@ -1,14 +1,18 @@
-from twisted.internet import reactor
-from twisted.python import log
-from autobahn.websocket import WebSocketClientProtocol, WebSocketClientFactory
-from twisted.internet.protocol import ReconnectingClientFactory
-import rpi_data.interface as interface
-import rpi_data.utility
 import json
 from hashlib import sha1
 import hmac
 import binascii
-import settings, common_protocol, buffer
+
+from autobahn.websocket import WebSocketClientProtocol, WebSocketClientFactory
+
+from twisted.internet import reactor
+from twisted.python import log
+from twisted.internet.protocol import ReconnectingClientFactory
+import rpi_data.interface as interface
+import rpi_data.utility
+import settings
+import common_protocol
+import buffer
 
 
 class StreamState(common_protocol.State):
@@ -36,7 +40,7 @@ class StreamState(common_protocol.State):
                 cls.flush()
             self.protocol.pop_state()
 
-            resp_msg = {'cmd':common_protocol.RPIClientCommands.DROP_TO_CONFIG_OK}
+            resp_msg = {'cmd': common_protocol.RPIClientCommands.DROP_TO_CONFIG_OK}
             self.protocol.sendMessage(json.dumps(resp_msg))
             return
 
@@ -72,7 +76,7 @@ class StreamState(common_protocol.State):
             self.polldata_write[key] = value['obj'].read()
 
         if len(self.polldata_read) > 0 or len(self.polldata_write) > 0:
-            msg = {'cmd':common_protocol.RPIClientCommands.DATA}
+            msg = {'cmd': common_protocol.RPIClientCommands.DATA}
             msg['read'] = self.polldata_read
             msg['write'] = self.polldata_write
             self.ackcount -= 1
@@ -92,6 +96,7 @@ class ConfigState(common_protocol.State):
     """
     Responsible for setting up the IO
     """
+
     def onMessage(self, msg):
         msg = json.loads(msg)
 
@@ -114,7 +119,7 @@ class ConfigState(common_protocol.State):
                     ch_port = value['ch_port']
                     if self.protocol.factory.debug:
                         log.msg('ConfigState - Configuring module %s on ch/port %d' %
-                            (cls_str, ch_port))
+                                (cls_str, ch_port))
 
                     cls = getattr(interface, cls_str)
                     try:
@@ -137,11 +142,10 @@ class ConfigState(common_protocol.State):
             log.msg(str(reads))
 
             # there should be some feedback done here if something fails
-            msg = {'cmd':common_protocol.RPIClientCommands.CONFIG_OK}
+            msg = {'cmd': common_protocol.RPIClientCommands.CONFIG_OK}
 
             self.protocol.push_state(StreamState(self.protocol, reads=reads, writes=writes))
             self.protocol.sendMessage(json.dumps(msg))
-
 
 
 class RegisterState(common_protocol.State):
@@ -156,7 +160,7 @@ class RegisterState(common_protocol.State):
             # compute HMAC reply
             hashed = hmac.new(settings.HMAC_TOKEN, self.protocol.mac + self.token, sha1)
             self.hamc_token = binascii.b2a_base64(hashed.digest())[:-1]
-            reply = {'cmd':common_protocol.ServerCommands.AUTH, 'payload':{'token':self.hamc_token}}
+            reply = {'cmd': common_protocol.ServerCommands.AUTH, 'payload': {'token': self.hamc_token}}
             self.protocol.sendMessage(json.dumps(reply))
             self.hmac_reply_expected = True
             return
@@ -189,7 +193,7 @@ class RegisterState(common_protocol.State):
                     choice['d'] = choice_value
                     choices.append(choice)
 
-                ret.append({'name':name, 'desc':desc, 'choices':choices, 'io_type':cls.IO_TYPE})
+                ret.append({'name': name, 'desc': desc, 'choices': choices, 'io_type': cls.IO_TYPE})
             return ret
 
         for key in self.protocol.interfaces.iterkeys():
