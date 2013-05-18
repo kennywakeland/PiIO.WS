@@ -9,6 +9,8 @@ Raspberry Pi remote IO
 *  [RPiBJ.SPIADC] (https://github.com/blaisejarrett/RPiBJ.SPIADC)
 *  [RPi.GPIO](http://code.google.com/p/raspberry-gpio-python/)
 
+## chang the WS_SERVER_IP in the /etc/local_settings.py
+
 ## Details
 Further details are available on my [site](http://blaisejarrett.com/projects/piio/).
 
