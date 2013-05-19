@@ -1,19 +1,14 @@
+from twisted.internet import reactor
+from twisted.python import log
+from autobahn.websocket import WebSocketClientProtocol, WebSocketClientFactory
+from twisted.internet.protocol import ReconnectingClientFactory
+import rpi_data.interface as interface
+import rpi_data.utility
 import json
 from hashlib import sha1
 import hmac
 import binascii
-
-from autobahn.websocket import WebSocketClientProtocol, WebSocketClientFactory
-
-from twisted.internet import reactor
-from twisted.python import log
-from twisted.internet.protocol import ReconnectingClientFactory
-import rpi_data.interface as interface
-import rpi_data.utility
-import settings
-import common_protocol
-import buffer
-
+import settings, common_protocol, buffer
 
 class StreamState(common_protocol.State):
     def __init__(self, protocol, reads, writes):
@@ -72,6 +67,7 @@ class StreamState(common_protocol.State):
 
         for key, value in self.config_reads.iteritems():
             self.polldata_read[key] = value['obj'].read()
+
         for key, value in self.config_writes.iteritems():
             self.polldata_write[key] = value['obj'].read()
 
@@ -118,8 +114,7 @@ class ConfigState(common_protocol.State):
                     cls_str = value['cls_name']
                     ch_port = value['ch_port']
                     if self.protocol.factory.debug:
-                        log.msg('ConfigState - Configuring module %s on ch/port %d' %
-                                (cls_str, ch_port))
+                        log.msg('ConfigState - Configuring module %s on ch/port %s' % (cls_str, ch_port))
 
                     cls = getattr(interface, cls_str)
                     try:
@@ -187,6 +182,7 @@ class RegisterState(common_protocol.State):
                 name = cls.__name__
                 desc = rpi_data.utility.trim(cls.__doc__)
                 choices = []
+
                 for choice_key, choice_value in cls.IO_CHOICES:
                     choice = {}
                     choice['s'] = choice_key

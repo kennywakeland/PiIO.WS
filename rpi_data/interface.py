@@ -1,7 +1,9 @@
 # SPI adc by blaisejarrett
-from RPiBJ import SPIADC
+#from RPiBJ import SPIADC
 # GPIO: http://code.google.com/p/raspberry-gpio-python/
 from RPi import GPIO
+from glob import glob
+from time import sleep
 
 
 class CHPortInUseException(Exception):
@@ -35,6 +37,7 @@ class IBase(object):
                 port_exists = True
                 break
         if not port_exists:
+            print "******"*4
             raise CHPortDoesntExistException('Port %d does not exist' % ch_port)
 
         if not self.__class__.ALLOW_DUPLICATE_PORTS:
@@ -108,36 +111,85 @@ class IWrite(IBase):
         self.last_written_value = value
 
 
-SPIADC.setup(0, 100000)
+# SPIADC.setup(0, 100000)
+#
+#
+# class ADC(IRead):
+#     """
+#     Maps to ADC using library
+#     Read only implied
+#     """
+#     IO_TYPE = IBase.IO_TYPE_INTEGER
+#     # we're using an 8 channel ADC
+#     IO_CHOICES = (
+#         (0, 'CH0'),
+#         (1, 'CH1'),
+#         (2, 'CH2'),
+#         (3, 'CH3'),
+#         (4, 'CH4'),
+#         (5, 'CH5'),
+#         (6, 'CH6'),
+#         (7, 'CH7'),
+#     )
+#
+#     class ChannelInUseError(Exception): pass
+#
+#     channels_in_use = {}
+#
+#     def __init__(self, ch_port):
+#         super(ADC, self).__init__(ch_port)
+#
+#     def read(self):
+#         return SPIADC.read(self.ch_port)
+
+def temperature_io_choices():
+    base_dir = '/sys/bus/w1/devices/'
+    io_choices = (())
+
+    for device_folder in glob(base_dir + '28*'):
+        device_file = device_folder + '/w1_slave'
+        io_choices += ((device_file,device_file),)
+
+    return io_choices
 
 
-class ADC(IRead):
-    """
-    Maps to ADC using library
-    Read only implied
-    """
+class Temperature(IRead):
+
     IO_TYPE = IBase.IO_TYPE_INTEGER
-    # we're using an 8 channel ADC
-    IO_CHOICES = (
-        (0, 'CH0'),
-        (1, 'CH1'),
-        (2, 'CH2'),
-        (3, 'CH3'),
-        (4, 'CH4'),
-        (5, 'CH5'),
-        (6, 'CH6'),
-        (7, 'CH7'),
-    )
-
-    class ChannelInUseError(Exception): pass
-
     channels_in_use = {}
+    IO_CHOICES = temperature_io_choices()
 
     def __init__(self, ch_port):
-        super(ADC, self).__init__(ch_port)
+        super(Temperature, self).__init__(ch_port)
 
     def read(self):
-        return SPIADC.read(self.ch_port)
+        return self.read_temp(self.ch_port)
+
+    def read_temp_raw(self, device_file):
+        f = open(device_file, 'r')
+        lines = f.readlines()
+        f.close()
+        return lines
+
+    def read_temp(self, device_file):
+        temp_raw = self.read_temp_raw(device_file)
+
+        count_max_wile = 0
+        while temp_raw[0].strip()[-3:] != 'YES' and temp_raw[1].find('t=') != -1:
+            sleep(0.6)
+            temp_raw = self.read_temp_raw(device_file)
+            count_max_wile += 1
+            if count_max_wile > 2:
+                raise
+
+        equals_pos = temp_raw[1].find('t=')
+
+        temp_string = temp_raw[1][equals_pos + 2:]
+        temp_string = temp_string.replace("\n", "").replace(" ", "");
+     #   print "__________"
+     #   print "'%s'" % temp_string
+     #   print "________________"
+        return temp_string
 
 
 GPIO.setmode(GPIO.BCM)

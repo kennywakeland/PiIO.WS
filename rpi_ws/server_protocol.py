@@ -1,24 +1,20 @@
+from twisted.python import log
+from twisted.internet import threads, reactor
+import twisted.internet.protocol as twistedsockets
+from autobahn.websocket import WebSocketServerFactory, WebSocketServerProtocol, HttpException
+import autobahn.httpstatus as httpstatus
+from twisted.web import resource
 import json
 import time
 import os
 import binascii
 import hashlib
+import settings, common_protocol, buffer
 from hashlib import sha1
 import hmac
-import urllib2
-import urllib
+import urllib2, urllib
+import math
 
-from autobahn.websocket import WebSocketServerFactory, WebSocketServerProtocol, HttpException
-import autobahn.httpstatus as httpstatus
-
-from twisted.python import log
-from twisted.internet import threads, reactor
-import twisted.internet.protocol as twistedsockets
-from twisted.web import resource
-import settings
-import common_protocol
-import buffer
-import twisted.internet.interfaces
 
 
 class SiteComm(resource.Resource):
@@ -55,7 +51,6 @@ class SiteComm(resource.Resource):
         self.ws_factory.config_rpi(rpi)
 
         return 'ok'
-
 
     def register_rpi(self, rpi):
         # we need mac, ip, interface desc
@@ -285,7 +280,7 @@ class RPIStreamState(ServerState):
                 # key: 'cls:%s, port:%d, eq:%s'
                 if key in self.config_reads:
                     for eq in self.config_reads[key]['equations']:
-                        new_key = 'cls:%s, port:%d, eq:%s' % (
+                        new_key = 'cls:%s, port:%s, eq:%s' % (
                             self.config_reads[key]['cls_name'],
                             self.config_reads[key]['ch_port'],
                             eq,
@@ -303,7 +298,7 @@ class RPIStreamState(ServerState):
                 # key: 'cls:%s, port:%d, eq:%s'
                 if key in self.config_writes:
                     for eq in self.config_writes[key]['equations']:
-                        new_key = 'cls:%s, port:%d, eq:%s' % (
+                        new_key = 'cls:%s, port:%s, eq:%s' % (
                             self.config_writes[key]['cls_name'],
                             self.config_writes[key]['ch_port'],
                             eq,

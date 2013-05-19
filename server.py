@@ -8,7 +8,7 @@ from twisted.python import log
 from rpi_ws.server_protocol import RPIServerProtocol, RPISocketServerFactory, SiteComm, FlashSocketPolicyServerProtocol
 from twisted.web import server
 
-from etc import local_settings
+from rpi_ws import settings
 
 DEBUG = False
 
@@ -16,16 +16,16 @@ PROVIDEFLASHSOCKETPOLICYFILE = True
 
 
 def main():
-    if local_settings.WS_USE_SSL or local_settings.WS_HTTP_SSL:
+    if settings.WS_USE_SSL or settings.WS_HTTP_SSL:
         contextFactory = ssl.DefaultOpenSSLContextFactory('certs/server.key',
                                                           'certs/server.crt')
 
-    if local_settings.WS_USE_SSL:
+    if settings.WS_USE_SSL:
         uri_type = "wss"
     else:
         uri_type = "ws"
 
-    server_url = "%s://%s:%d" % (uri_type, local_settings.WS_SERVER_IP, local_settings.WS_PORT)
+    server_url = "%s://%s:%d" % (uri_type, settings.WS_SERVER_IP, settings.WS_PORT)
 
     if DEBUG:
         log.startLogging(sys.stdout)
@@ -37,15 +37,15 @@ def main():
     factory.sitecomm = sitecomm
     site = server.Site(sitecomm)
 
-    if local_settings.WS_USE_SSL:
+    if settings.WS_USE_SSL:
         listenWS(factory, contextFactory)
     else:
         listenWS(factory)
 
-    if local_settings.WS_HTTP_SSL:
-        reactor.listenSSL(local_settings.WS_HTTP_PORT, site, contextFactory)
+    if settings.WS_HTTP_SSL:
+        reactor.listenSSL(settings.WS_HTTP_PORT, site, contextFactory)
     else:
-        reactor.listenTCP(local_settings.WS_HTTP_PORT, site)
+        reactor.listenTCP(settings.WS_HTTP_PORT, site)
 
  #   if PROVIDEFLASHSOCKETPOLICYFILE:
  #       socketfactory = twistedsockets.Factory()
