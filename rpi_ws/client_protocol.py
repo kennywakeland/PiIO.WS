@@ -66,10 +66,18 @@ class StreamState(common_protocol.State):
             return
 
         for key, value in self.config_reads.iteritems():
-            self.polldata_read[key] = value['obj'].read()
+            if value['obj'] is not None:
+                self.polldata_read[key] = value['obj'].read()
+            else:
+                log.err("value['obj'] is None ")
+                raise
 
         for key, value in self.config_writes.iteritems():
-            self.polldata_write[key] = value['obj'].read()
+            if value['obj'] is not None:
+                self.polldata_write[key] = value['obj'].read()
+            else:
+                log.err("value['obj'] is None ")
+                raise
 
         if len(self.polldata_read) > 0 or len(self.polldata_write) > 0:
             msg = {'cmd': common_protocol.RPIClientCommands.DATA}
@@ -117,15 +125,15 @@ class ConfigState(common_protocol.State):
                         log.msg('ConfigState - Configuring module %s on ch/port %s' % (cls_str, ch_port))
 
                     cls = getattr(interface, cls_str)
+                    #instance = cls(ch_port)
                     try:
                         instance = cls(ch_port)
+                        value['obj'] = instance
                     except Exception, ex:
                         if self.protocol.factory.debug:
-                            log.msg('ConfigState - Ex creating module %s', str(ex))
+                            log.err('ConfigState - Ex creating module %s' % str(ex))
                         value['obj'] = None
                         continue
-
-                    value['obj'] = instance
 
             instantiate_io(reads)
             instantiate_io(writes)

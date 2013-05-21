@@ -4,6 +4,7 @@
 from RPi import GPIO
 from glob import glob
 from time import sleep
+import utility
 
 
 class CHPortInUseException(Exception):
@@ -33,16 +34,18 @@ class IBase(object):
 
         port_exists = False
         for existing_port, existing_port_name in self.IO_CHOICES:
-            if existing_port == ch_port:
+            if str(existing_port) == str(ch_port):
                 port_exists = True
                 break
+
         if not port_exists:
-            print "******"*4
-            raise CHPortDoesntExistException('Port %d does not exist' % ch_port)
+            raise CHPortDoesntExistException('Port %s does not exist' % ch_port)
 
         if not self.__class__.ALLOW_DUPLICATE_PORTS:
+            print "self.__class__.channels_in_use :", self.__class__.channels_in_use
             if ch_port in self.__class__.channels_in_use:
-                raise CHPortInUseException("Channel %d is in use" % ch_port)
+                raise CHPortInUseException("Channel %s is in use" % ch_port)
+
             self.__class__.channels_in_use[ch_port] = self
 
     @classmethod
@@ -182,14 +185,64 @@ class Temperature(IRead):
             if count_max_wile > 2:
                 raise
 
-        equals_pos = temp_raw[1].find('t=')
-
-        temp_string = temp_raw[1][equals_pos + 2:]
-        temp_string = temp_string.replace("\n", "").replace(" ", "");
-     #   print "__________"
-     #   print "'%s'" % temp_string
-     #   print "________________"
+        temp_string = temp_raw[1][temp_raw[1].find('t=') + 2:]
+        temp_string = temp_string.replace("\n", "").replace(" ", "")
         return temp_string
+
+
+
+class MODIOInput(IRead):
+    """
+    Maps to MOD-IO read only
+    """
+
+    address = 0x58
+    IO_TYPE = IBase.IO_TYPE_BINARY
+    IO_CHOICES = (
+        (4, 'Relay 1'),
+        (3, 'Relay 2'),
+        (2, 'Relay 3'),
+        (1, 'Relay 4'),
+        (20, 'Digital input 1'),
+        (21, 'Digital input 2'),
+        (22, 'Digital input 3'),
+        (23, 'Digital input 4'),
+        (30, 'Analogue inputs 1'),
+        (31, 'Analogue inputs 2'),
+        (32, 'Analogue inputs 3'),
+        (33, 'Analogue inputs 4'),
+    )
+
+    channels_in_use = {}
+
+    def read(self):
+        ch_port = int(self.ch_port)
+        if 1 <= ch_port <= 4:
+            return utility.RELAY.get_state(ch_port)
+        elif 20 <= ch_port <= 23:
+            return utility.DIGITAL_INPUT.get_state(ch_port - 20)
+        elif 30 <= ch_port <= 33:
+            return 0
+        else:
+            return 0
+
+
+class MODIOOutput(IWrite):
+    """
+    Maps to MOD-IO write
+    """
+    IO_TYPE = IBase.IO_TYPE_BINARY
+    IO_CHOICES = (
+        (4, 'Relay 1'),
+        (3, 'Relay 2'),
+        (2, 'Relay 3'),
+        (1, 'Relay 4'),
+    )
+    DEFAULT_VALUE = False
+
+    def write(self, value):
+        utility.RELAY.set_state(self.ch_port, int(value))
+        super(MODIOOutput, self).write(value)
 
 
 GPIO.setmode(GPIO.BCM)
