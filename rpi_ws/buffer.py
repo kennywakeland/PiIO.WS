@@ -1,5 +1,3 @@
-
-
 class UpdateDict(dict):
     # (sent_value, stored_value)
     def __setitem__(self, key, value):

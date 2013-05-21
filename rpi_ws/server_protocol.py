@@ -1,5 +1,5 @@
 from twisted.python import log
-from twisted.internet import threads, reactor
+from twisted.internet import reactor
 import twisted.internet.protocol as twistedsockets
 from autobahn.websocket import WebSocketServerFactory, WebSocketServerProtocol, HttpException
 import autobahn.httpstatus as httpstatus
@@ -9,12 +9,14 @@ import time
 import os
 import binascii
 import hashlib
-import settings, common_protocol, buffer
 from hashlib import sha1
 import hmac
-import urllib2, urllib
-import math
+import urllib2
+import urllib
 
+import settings
+import common_protocol
+import buffer
 
 
 class SiteComm(resource.Resource):
@@ -311,7 +313,7 @@ class RPIStreamState(ServerState):
                 else:
                     # TODO: drop to config state or something, remote config seems to be invalid
                     pass
-                # notify factory to update listening clients
+                    # notify factory to update listening clients
             if self.datamsgcount_ack >= 5:
                 msg = {'cmd': common_protocol.ServerCommands.ACK_DATA, 'ack_count': self.datamsgcount_ack}
                 self.client.protocol.sendMessage(json.dumps(msg))

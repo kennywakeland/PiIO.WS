@@ -25,18 +25,19 @@ def trim(docstring):
         stripped = line.lstrip()
         if stripped:
             indent = min(indent, len(line) - len(stripped))
-        # Remove indentation (first line is special):
+            # Remove indentation (first line is special):
     trimmed = [lines[0].strip()]
     if indent < sys.maxint:
         for line in lines[1:]:
             trimmed.append(line[indent:].rstrip())
-        # Strip off trailing and leading blank lines:
+            # Strip off trailing and leading blank lines:
     while trimmed and not trimmed[-1]:
         trimmed.pop()
     while trimmed and not trimmed[0]:
         trimmed.pop(0)
         # Return a single string:
     return '\n'.join(trimmed)
+
 
 try:
     import smbus
@@ -51,7 +52,7 @@ try:
             self.write()
 
         def write(self):
-            state_boll = int("0000"+"".join(str(x) for x in self.relay_state), 2)
+            state_boll = int("0000" + "".join(str(x) for x in self.relay_state), 2)
             sleep(0.2)
             self.bus.write_byte_data(self.address, 0x10, state_boll)
 
@@ -64,16 +65,16 @@ try:
             if relay_number <= 0 or relay_number > self.number_of_relay:
                 return -1
             else:
-                return self.relay_state[relay_number-1]
+                return self.relay_state[relay_number - 1]
 
         def set_state(self, relay_number, relay_state, no_write=False):
             relay_number = int(relay_number)
             if relay_number <= 0 or relay_number > self.number_of_relay or relay_state < 0 or relay_state > 1:
                 return -1
-            elif relay_state == self.relay_state[relay_number-1]:
+            elif relay_state == self.relay_state[relay_number - 1]:
                 return 2
             else:
-                self.relay_state[relay_number-1] = relay_state
+                self.relay_state[relay_number - 1] = relay_state
 
                 if no_write:
                     return 0
@@ -88,7 +89,7 @@ try:
             self.address = address
             self.bus = smbus.SMBus(1)
             self.number_of_input = number_of_input
-            self.input_state = "0"*self.number_of_input
+            self.input_state = "0" * self.number_of_input
             self.update_time_min = 20
 
             self.set_update_time()
@@ -103,7 +104,6 @@ try:
                 add_zero = self.number_of_input - len(input_state)
                 self.input_state = "%s%s" % ("0" * add_zero, input_state)
                 self.set_update_time()
-
 
         def get_state(self, input_number):
             input_number = int(input_number)
@@ -127,3 +127,4 @@ try:
 
 except ImportError as exc:
     RELAY = []
+    DIGITAL_INPUT = []

@@ -1,9 +1,10 @@
 # SPI adc by blaisejarrett
 #from RPiBJ import SPIADC
 # GPIO: http://code.google.com/p/raspberry-gpio-python/
-from RPi import GPIO
 from glob import glob
 from time import sleep
+
+from RPi import GPIO
 import utility
 
 
@@ -42,7 +43,6 @@ class IBase(object):
             raise CHPortDoesntExistException('Port %s does not exist' % ch_port)
 
         if not self.__class__.ALLOW_DUPLICATE_PORTS:
-            print "self.__class__.channels_in_use :", self.__class__.channels_in_use
             if ch_port in self.__class__.channels_in_use:
                 raise CHPortInUseException("Channel %s is in use" % ch_port)
 
@@ -151,13 +151,12 @@ def temperature_io_choices():
 
     for device_folder in glob(base_dir + '28*'):
         device_file = device_folder + '/w1_slave'
-        io_choices += ((device_file,device_file),)
+        io_choices += ((device_file, device_file),)
 
     return io_choices
 
 
 class Temperature(IRead):
-
     IO_TYPE = IBase.IO_TYPE_INTEGER
     channels_in_use = {}
     IO_CHOICES = temperature_io_choices()
@@ -190,8 +189,7 @@ class Temperature(IRead):
         return temp_string
 
 
-
-class MODIOInput(IRead):
+class MODIO_Input(IRead):
     """
     Maps to MOD-IO read only
     """
@@ -227,7 +225,7 @@ class MODIOInput(IRead):
             return 0
 
 
-class MODIOOutput(IWrite):
+class MODIO_Output(IWrite):
     """
     Maps to MOD-IO write
     """
@@ -242,7 +240,7 @@ class MODIOOutput(IWrite):
 
     def write(self, value):
         utility.RELAY.set_state(self.ch_port, int(value))
-        super(MODIOOutput, self).write(value)
+        super(MODIO_Output, self).write(value)
 
 
 GPIO.setmode(GPIO.BCM)

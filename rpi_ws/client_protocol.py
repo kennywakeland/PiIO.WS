@@ -2,13 +2,17 @@ from twisted.internet import reactor
 from twisted.python import log
 from autobahn.websocket import WebSocketClientProtocol, WebSocketClientFactory
 from twisted.internet.protocol import ReconnectingClientFactory
-import rpi_data.interface as interface
-import rpi_data.utility
 import json
 from hashlib import sha1
 import hmac
 import binascii
-import settings, common_protocol, buffer
+
+import rpi_data.interface as interface
+import rpi_data.utility
+import settings
+import common_protocol
+import buffer
+
 
 class StreamState(common_protocol.State):
     def __init__(self, protocol, reads, writes):
@@ -80,9 +84,11 @@ class StreamState(common_protocol.State):
                 raise
 
         if len(self.polldata_read) > 0 or len(self.polldata_write) > 0:
-            msg = {'cmd': common_protocol.RPIClientCommands.DATA}
-            msg['read'] = self.polldata_read
-            msg['write'] = self.polldata_write
+            msg = {'cmd': common_protocol.RPIClientCommands.DATA,
+                   'read': self.polldata_read,
+                   'write': self.polldata_write
+                  }
+
             self.ackcount -= 1
             self.protocol.sendMessage(json.dumps(msg))
 
@@ -125,7 +131,7 @@ class ConfigState(common_protocol.State):
                         log.msg('ConfigState - Configuring module %s on ch/port %s' % (cls_str, ch_port))
 
                     cls = getattr(interface, cls_str)
-                    #instance = cls(ch_port)
+
                     try:
                         instance = cls(ch_port)
                         value['obj'] = instance
@@ -219,10 +225,10 @@ class RPIClientProtocol(WebSocketClientProtocol, common_protocol.ProtocolState):
     def onMessage(self, msg, binary):
         try:
             state = self.state_stack.pop_wr()
+            state.onMessage(msg)
         except IndexError:
             if self.factory.debug:
-                log.msg("RPIClientProtocol.onMessage - Received a message in an unknown state, ignored")
-        state.onMessage(msg)
+                log.err("RPIClientProtocol.onMessage - Received a message in an unknown state, ignored")
 
 
 class ReconnectingWebSocketClientFactory(ReconnectingClientFactory, WebSocketClientFactory):
