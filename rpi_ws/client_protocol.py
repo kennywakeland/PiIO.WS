@@ -185,9 +185,8 @@ class RegisterState(common_protocol.State):
         self._send_desc()
 
     def _send_desc(self):
-        desc = {}
-        desc['iface'] = {}
-        desc['mac'] = self.protocol.mac
+        desc = {'iface': {},
+                'mac': self.protocol.mac}
 
         def idesc(ifaces):
             # list of classes
@@ -198,9 +197,8 @@ class RegisterState(common_protocol.State):
                 choices = []
 
                 for choice_key, choice_value in cls.IO_CHOICES:
-                    choice = {}
-                    choice['s'] = choice_key
-                    choice['d'] = choice_value
+                    choice = {'s': choice_key,
+                              'd': choice_value}
                     choices.append(choice)
 
                 ret.append({'name': name, 'desc': desc, 'choices': choices, 'io_type': cls.IO_TYPE})

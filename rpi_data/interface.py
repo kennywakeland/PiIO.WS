@@ -5,7 +5,7 @@ from glob import glob
 from time import sleep
 
 from RPi import GPIO
-import utility
+import mod_io
 
 
 class CHPortInUseException(Exception):
@@ -189,7 +189,7 @@ class Temperature(IRead):
         return temp_string
 
 
-class MODIO_Input(IRead):
+class MODIOInput(IRead):
     """
     Maps to MOD-IO read only
     """
@@ -216,16 +216,16 @@ class MODIO_Input(IRead):
     def read(self):
         ch_port = int(self.ch_port)
         if 1 <= ch_port <= 4:
-            return utility.RELAY.get_state(ch_port)
+            return mod_io.MOD_IO_RELAY.get_state(ch_port)
         elif 20 <= ch_port <= 23:
-            return utility.DIGITAL_INPUT.get_state(ch_port - 20)
+            return mod_io.MOD_IO_DIGITAL_INPUT.get_state(ch_port - 20)
         elif 30 <= ch_port <= 33:
             return 0
         else:
             return 0
 
 
-class MODIO_Output(IWrite):
+class MODIOOutput(IWrite):
     """
     Maps to MOD-IO write
     """
@@ -239,8 +239,8 @@ class MODIO_Output(IWrite):
     DEFAULT_VALUE = False
 
     def write(self, value):
-        utility.RELAY.set_state(self.ch_port, int(value))
-        super(MODIO_Output, self).write(value)
+        mod_io.MOD_IO_RELAY.set_state(self.ch_port, int(value))
+        super(MODIOOutput, self).write(value)
 
 
 GPIO.setmode(GPIO.BCM)
@@ -330,8 +330,6 @@ def get_interface_desc():
     read_cls = IRead.__subclasses__()
     write_cls = IWrite.__subclasses__()
 
-    ret = {}
-    ret['read'] = read_cls
-    ret['write'] = write_cls
+    ret = {'read': read_cls, 'write': write_cls}
     return ret
 

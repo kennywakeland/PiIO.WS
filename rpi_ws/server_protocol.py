@@ -1,9 +1,9 @@
 from twisted.python import log
 from twisted.internet import reactor
+from twisted.web import resource
 import twisted.internet.protocol as twistedsockets
 from autobahn.websocket import WebSocketServerFactory, WebSocketServerProtocol, HttpException
 import autobahn.httpstatus as httpstatus
-from twisted.web import resource
 import json
 import time
 import os
@@ -46,7 +46,7 @@ class SiteComm(resource.Resource):
                     log.msg('render_POST - Received config for RPI %s' % rpi['mac'])
         except:
             if self.ws_factory.debug:
-                log.msg('render_POST -  Error parsing rpi configs')
+                log.err('render_POST -  Error parsing rpi configs')
             return 'error'
 
         # delegate request to the WS factory
@@ -56,10 +56,9 @@ class SiteComm(resource.Resource):
 
     def register_rpi(self, rpi):
         # we need mac, ip, interface desc
-        payload = {}
-        payload['mac'] = rpi.mac
-        payload['ip'] = rpi.protocol.peer.host
-        payload['iface'] = rpi.iface
+        payload = {'mac': rpi.mac,
+                   'ip': rpi.protocol.peer.host,
+                   'iface': rpi.iface}
 
         post_data = {'json': json.dumps(payload)}
         post_data = urllib.urlencode(post_data)
@@ -77,8 +76,7 @@ class SiteComm(resource.Resource):
 
 
     def disconnect_rpi(self, rpi):
-        payload = {}
-        payload['mac'] = rpi.mac
+        payload = {'mac': rpi.mac}
 
         post_data = {'json': json.dumps(payload)}
         post_data = urllib.urlencode(post_data)
@@ -171,9 +169,9 @@ class UserClient(Client):
                                                self.streaming_buffer_write)
 
         if len(self.streaming_buffer_read) > 0 or len(self.streaming_buffer_write) > 0:
-            msg = {'cmd': common_protocol.ServerCommands.WRITE_DATA}
-            msg['read'] = self.streaming_buffer_read
-            msg['write'] = self.streaming_buffer_write
+            msg = {'cmd': common_protocol.ServerCommands.WRITE_DATA,
+                   'read': self.streaming_buffer_read,
+                   'write': self.streaming_buffer_write}
             self.ackcount -= 1
             self.protocol.sendMessage(json.dumps(msg))
             # keep polling until we run out of data
@@ -191,7 +189,9 @@ class UserClient(Client):
         if state == 'config':
             if self.associated_rpi is not rpi:
                 return
-        msg = {'cmd': common_protocol.ServerCommands.RPI_STATE_CHANGE, 'rpi_mac': rpi.mac, 'rpi_state': state}
+        msg = {'cmd': common_protocol.ServerCommands.RPI_STATE_CHANGE,
+               'rpi_mac': rpi.mac,
+               'rpi_state': state}
         self.protocol.sendMessage(json.dumps(msg))
 
     def onMessage(self, msg):
@@ -199,7 +199,7 @@ class UserClient(Client):
             msg = json.loads(msg)
         except:
             if self.protocol.debug:
-                log.msg('UserState.onMessage - JSON error, dropping')
+                log.err('UserState.onMessage - JSON error, dropping')
             self.protocol.failConnection()
 
         if msg['cmd'] == common_protocol.UserClientCommands.CONNECT_RPI:
