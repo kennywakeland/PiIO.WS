@@ -26,7 +26,8 @@ class SiteComm(resource.Resource):
     isLeaf = True
 
     def __init__(self, ws_factory, *args, **kwargs):
-        resource.Resource.__init__(self, *args, **kwargs)
+        super(SiteComm, self).__init__(*args, **kwargs)
+
         self.ws_factory = ws_factory
 
     def render_GET(self, request):
@@ -105,7 +106,8 @@ class ServerState(common_protocol.State):
 
 class Client(common_protocol.ProtocolState):
     def __init__(self, protocol):
-        common_protocol.ProtocolState.__init__(self)
+        super(Client, self).__init__()
+
         self.protocol = protocol
 
     def onMessage(self, msg):
@@ -129,7 +131,7 @@ class Client(common_protocol.ProtocolState):
 
 class UserClient(Client):
     def __init__(self, protocol):
-        Client.__init__(self, protocol)
+        super(UserClient, self).__init__(protocol)
         self.associated_rpi = None
         self.streaming_buffer_read = None
         self.streaming_buffer_write = None
@@ -484,7 +486,7 @@ class RPIRegisterState(ServerState):
 
 class RPIClient(Client):
     def __init__(self, protocol):
-        Client.__init__(self, protocol)
+        super(RPIClient, self).__init__(protocol)
 
     def onClose(self, wasClean, code, reason):
         # if we're registered remove ourselves from active client list
@@ -649,7 +651,7 @@ class RPISocketServerFactory(WebSocketServerFactory):
     """
 
     def __init__(self, *args, **kwargs):
-        WebSocketServerFactory.__init__(self, *args, **kwargs)
+        super(RPISocketServerFactory, self).__init__(*args, **kwargs)
 
         # safari
         self.allowHixie76 = True
