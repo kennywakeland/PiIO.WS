@@ -2,6 +2,10 @@ from twisted.python import log
 
 
 class State(object):
+    def __init__(self, protocol):
+        self.protocol = protocol
+        self.active = False
+
     def onMessage(self, msg):
         raise NotImplementedError("Should have implemented this")
 
@@ -18,9 +22,6 @@ class State(object):
         if self.protocol.debug:
             log.msg("%s.deactivated()" % self.__class__.__name__)
 
-    def __init__(self, protocol):
-        self.protocol = protocol
-        self.active = False
 
 
 class ServerCommands(object):

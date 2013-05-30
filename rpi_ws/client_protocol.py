@@ -20,6 +20,7 @@ class StreamState(common_protocol.State):
         # {u'cls:ADC, port:3': {'equations': [u'zzzz', u'asdfadfad'], 'obj': <rpi_data.interface.ADC object at 0x036D18D0>}}
         super(StreamState, self).__init__(protocol)
         self.config_reads = reads
+
         self.config_writes = writes
         self.polldata_read = buffer.UpdateDict()
         self.polldata_write = buffer.UpdateDict()
@@ -56,14 +57,14 @@ class StreamState(common_protocol.State):
             self.pause_streaming()
 
         elif msg['cmd'] == common_protocol.ServerCommands.WRITE_DATA:
-            key = msg['iface_port']
+            key = msg['inter_face_port']
             value = msg['value']
-            self.write_to_iface(key, value)
+            self.write_to_inter_face(key, value)
 
-    def write_to_iface(self, iface_port, value):
-        if iface_port not in self.config_writes:
+    def write_to_inter_face(self, inter_face_port, value):
+        if inter_face_port not in self.config_writes or self.config_writes[inter_face_port]['obj'] is None:
             return
-        self.config_writes[iface_port]['obj'].write(value)
+        self.config_writes[inter_face_port]['obj'].write(value)
 
     def poll_and_send(self):
         if self.ackcount <= -10 or self.paused:
@@ -73,15 +74,16 @@ class StreamState(common_protocol.State):
             if value['obj'] is not None:
                 self.polldata_read[key] = value['obj'].read()
             else:
-                log.err("value['obj'] is None ")
-                raise
+                #log.err("value['obj'] is None ")
+                self.polldata_write[key] = None
 
         for key, value in self.config_writes.iteritems():
             if value['obj'] is not None:
                 self.polldata_write[key] = value['obj'].read()
             else:
-                log.err("value['obj'] is None ")
-                raise
+                #log.err("value['obj'] is None ")
+                self.polldata_write[key] = None
+
 
         if len(self.polldata_read) > 0 or len(self.polldata_write) > 0:
             msg = {'cmd': common_protocol.RPIClientCommands.DATA,
@@ -139,6 +141,7 @@ class ConfigState(common_protocol.State):
                         if self.protocol.factory.debug:
                             log.err('ConfigState - Ex creating module %s' % str(ex))
                         value['obj'] = None
+                        #raise
                         continue
 
             instantiate_io(reads)
@@ -148,7 +151,7 @@ class ConfigState(common_protocol.State):
                 log.msg('ConfigState - Instantiated %d read interfaces' % len(reads))
                 log.msg('ConfigState - Instantiated %d write interfaces' % len(writes))
 
-            log.msg(str(reads))
+                log.msg(str(reads))
 
             # there should be some feedback done here if something fails
             msg = {'cmd': common_protocol.RPIClientCommands.CONFIG_OK}
@@ -185,13 +188,13 @@ class RegisterState(common_protocol.State):
         self._send_desc()
 
     def _send_desc(self):
-        desc = {'iface': {},
+        desc = {'inter_face': {},
                 'mac': self.protocol.mac}
 
-        def idesc(ifaces):
+        def inter_desc(inter_faces):
             # list of classes
             ret = []
-            for cls in ifaces:
+            for cls in inter_faces:
                 name = cls.__name__
                 desc = rpi_data.utility.trim(cls.__doc__)
                 choices = []
@@ -205,7 +208,7 @@ class RegisterState(common_protocol.State):
             return ret
 
         for key in self.protocol.interfaces.iterkeys():
-            desc['iface'][key] = idesc(self.protocol.interfaces[key])
+            desc['inter_face'][key] = inter_desc(self.protocol.interfaces[key])
 
         self.protocol.sendMessage(json.dumps(desc))
 
@@ -224,9 +227,9 @@ class RPIClientProtocol(WebSocketClientProtocol, common_protocol.ProtocolState):
         try:
             state = self.state_stack.pop_wr()
             state.onMessage(msg)
-        except IndexError:
+        except IndexError, e:
             if self.factory.debug:
-                log.err("RPIClientProtocol.onMessage - Received a message in an unknown state, ignored")
+                log.err("%s.onMessage - Received a message in an unknown state, ignored %s" % (self.__class__.__name__, e))
 
 
 class ReconnectingWebSocketClientFactory(ReconnectingClientFactory, WebSocketClientFactory):

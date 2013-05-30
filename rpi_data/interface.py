@@ -157,6 +157,10 @@ def temperature_io_choices():
 
 
 class Temperature(IRead):
+    """
+        Temperature
+    """
+
     IO_TYPE = IBase.IO_TYPE_INTEGER
     channels_in_use = {}
     IO_CHOICES = temperature_io_choices()
@@ -189,22 +193,33 @@ class Temperature(IRead):
         return temp_string
 
 
-class MODIOInput(IRead):
+class MODIO_Digital_Input(IRead):
     """
-    Maps to MOD-IO read only
+    Maps to MODIO Digital Input read only
     """
 
-    address = 0x58
     IO_TYPE = IBase.IO_TYPE_BINARY
     IO_CHOICES = (
-        (4, 'Relay 1'),
-        (3, 'Relay 2'),
-        (2, 'Relay 3'),
-        (1, 'Relay 4'),
-        (20, 'Digital input 1'),
-        (21, 'Digital input 2'),
-        (22, 'Digital input 3'),
-        (23, 'Digital input 4'),
+        (23, 'Digital input 1'),
+        (22, 'Digital input 2'),
+        (21, 'Digital input 3'),
+        (20, 'Digital input 4')
+    )
+
+    channels_in_use = {}
+
+    def read(self):
+        ch_port = int(self.ch_port)
+        return mod_io.MOD_IO_DIGITAL_INPUT.get_state(ch_port - 20)
+
+
+class MODIO_Analogue_Input(IRead):
+    """
+    Maps to MODIO Analogue Input read only
+    """
+
+    IO_TYPE = IBase.IO_TYPE_INTEGER
+    IO_CHOICES = (
         (30, 'Analogue inputs 1'),
         (31, 'Analogue inputs 2'),
         (32, 'Analogue inputs 3'),
@@ -215,38 +230,50 @@ class MODIOInput(IRead):
 
     def read(self):
         ch_port = int(self.ch_port)
-        if 1 <= ch_port <= 4:
-            return mod_io.MOD_IO_RELAY.get_state(ch_port)
-        elif 20 <= ch_port <= 23:
-            return mod_io.MOD_IO_DIGITAL_INPUT.get_state(ch_port - 20)
-        elif 30 <= ch_port <= 33:
-            return 0
-        else:
-            return 0
+        return mod_io.MOD_IO_Analogue_INPUT.get_state(ch_port - 30)
 
-
-class MODIOOutput(IWrite):
+class MODIO_Relay_Input(IRead):
     """
-    Maps to MOD-IO write
+    Maps to MODIO Relay Input read only
+    """
+
+    IO_TYPE = IBase.IO_TYPE_BINARY
+    IO_CHOICES = (
+        (3, 'Relay 1'),
+        (2, 'Relay 2'),
+        (1, 'Relay 3'),
+        (0, 'Relay 4'),
+    )
+
+    channels_in_use = {}
+
+    def read(self):
+        ch_port = int(self.ch_port)
+        return mod_io.MOD_IO_RELAY.get_state(ch_port)
+
+
+class MODIO_Relay_Output(IWrite):
+    """
+    Maps to MODIO Relay Output-IO write
     """
     IO_TYPE = IBase.IO_TYPE_BINARY
     IO_CHOICES = (
-        (4, 'Relay 1'),
-        (3, 'Relay 2'),
-        (2, 'Relay 3'),
-        (1, 'Relay 4'),
+        (3, 'Relay 1'),
+        (2, 'Relay 2'),
+        (1, 'Relay 3'),
+        (0, 'Relay 4'),
     )
     DEFAULT_VALUE = False
 
     def write(self, value):
         mod_io.MOD_IO_RELAY.set_state(self.ch_port, int(value))
-        super(MODIOOutput, self).write(value)
+        super(MODIO_Relay_Output, self).write(value)
 
 
 GPIO.setmode(GPIO.BCM)
 
 
-class GPIOInput(IRead):
+class GPIO_Input(IRead):
     """
     Maps to GPIO read only
     """
@@ -274,7 +301,7 @@ class GPIOInput(IRead):
     ports_in_use = {}
 
     def __init__(self, ch_port):
-        super(GPIOInput, self).__init__(ch_port)
+        super(GPIO_Input, self).__init__(ch_port)
         GPIO.setup(ch_port, GPIO.IN)
 
     def read(self):
@@ -284,7 +311,7 @@ class GPIOInput(IRead):
         return GPIO.input(self.ch_port)
 
 
-class GPIOOutput(IWrite):
+class GPIO_Output(IWrite):
     """
     Maps to GPIO write
     """
@@ -311,7 +338,7 @@ class GPIOOutput(IWrite):
     DEFAULT_VALUE = False
 
     def __init__(self, ch_port):
-        super(GPIOOutput, self).__init__(ch_port)
+        super(GPIO_Output, self).__init__(ch_port)
         GPIO.setup(ch_port, GPIO.OUT)
 
     def write(self, value):
@@ -323,7 +350,7 @@ class GPIOOutput(IWrite):
             # not a boolean value
             # throw?
             return
-        super(GPIOOutput, self).write(value)
+        super(GPIO_Output, self).write(value)
 
 
 def get_interface_desc():

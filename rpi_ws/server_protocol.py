@@ -58,7 +58,7 @@ class SiteComm(resource.Resource):
         # we need mac, ip, interface desc
         payload = {'mac': rpi.mac,
                    'ip': rpi.protocol.peer.host,
-                   'iface': rpi.iface}
+                   'inter_face': rpi.inter_face}
 
         post_data = {'json': json.dumps(payload)}
         post_data = urllib.urlencode(post_data)
@@ -73,7 +73,6 @@ class SiteComm(resource.Resource):
         # notify users
         reactor.callFromThread(self.ws_factory.register_rpi_wsite, rpi)
         # register should return configs
-
 
     def disconnect_rpi(self, rpi):
         payload = {'mac': rpi.mac}
@@ -112,10 +111,10 @@ class Client(common_protocol.ProtocolState):
     def onMessage(self, msg):
         try:
             state = self.state_stack.pop_wr()
-        except IndexError:
+            state.onMessage(msg)
+        except IndexError, e:
             if self.protocol.factory.debug:
-                log.msg("%s.onMessage - Received a message in an unknown state, ignored", self.__class__.__name__)
-        state.onMessage(msg)
+                log.err("%s.onMessage - Received a message in an unknown state, ignored %s" %(self.__class__.__name__ , e))
 
     def onClose(self, wasClean, code, reason):
         pass
@@ -124,10 +123,9 @@ class Client(common_protocol.ProtocolState):
         pass
 
 
-"""
-User client related protocol
-"""
-
+#"""
+#User client related protocol
+#"""
 
 class UserClient(Client):
     def __init__(self, protocol):
@@ -213,7 +211,7 @@ class UserClient(Client):
                 self.copy_and_send()
 
         elif msg['cmd'] == common_protocol.UserClientCommands.WRITE_DATA:
-            port = msg['iface_port']
+            port = msg['inter_face_port']
             value = msg['value']
             if self.associated_rpi is not None:
                 self.associated_rpi.write_interface_data(port, value)
@@ -293,6 +291,7 @@ class RPIStreamState(ServerState):
                     pass
             if self.client.protocol.debug:
                 log.msg('RPIStreamState - EQs: %s' % str(self.read_data_buffer_eq))
+
             for key, value in write_data.iteritems():
                 # equations for write interfaces are applied on the returned value
                 # input value to interfaces are unchanged
@@ -333,7 +332,7 @@ class RPIStreamState(ServerState):
         # removes the EQ from the key sent by the client
         config_key = self.write_data_eq_map[key]
         msg = {'cmd': common_protocol.ServerCommands.WRITE_DATA,
-               'iface_port': config_key,
+               'inter_face_port': config_key,
                'value': value}
         self.client.protocol.sendMessage(json.dumps(msg))
 
@@ -435,7 +434,7 @@ class RPIRegisterState(ServerState):
             # msg contains a register request
             parsed = json.loads(msg)
             self.client.mac = parsed['mac']
-            self.client.iface = parsed['iface']
+            self.client.inter_face = parsed['inter_face']
             if self.client.protocol.debug:
                 log.msg("RPIClient.onMessage - Register Request from %s" % self.client.mac)
 
