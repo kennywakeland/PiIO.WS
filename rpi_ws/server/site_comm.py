@@ -42,7 +42,6 @@ class SiteComm(resource.Resource):
 
         # delegate request to the WS factory
         self.ws_factory.config_rpi(rpi)
-        #self.ws_factory.
 
         return 'ok'
 

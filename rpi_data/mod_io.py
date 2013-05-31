@@ -42,7 +42,7 @@ class MOD_IO(object):
         if (self.get_time() - self.update_time) > self.update_time_min:
             return True
         else:
-            sleep(0.05)
+            sleep(0.001)
             return False
 
     def set_update_time(self):

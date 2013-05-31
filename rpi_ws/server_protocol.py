@@ -197,10 +197,11 @@ class RPISocketServerFactory(WebSocketServerFactory):
         """
         # check if RPI is actually an active client
         mac = configs['mac']
-        if mac not in self.rpi_clients:
+
+        rpi_client = self.get_rpi(mac)
+        if rpi_client is None:
             return False
 
-        rpi_client = self.rpi_clients[mac]
         return rpi_client.config_io(reads=configs['read'], writes=configs['write'])
 
 

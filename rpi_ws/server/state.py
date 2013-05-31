@@ -182,7 +182,12 @@ class RPIStreamState(ServerState):
         if eq != '':
             # TODO: fix security
             x = value
-            new_value = eval(eq)
+            try:
+                new_value = eval(eq)
+            except :
+                if self.client.protocol.debug:
+                    log.err('evaluate_eq error  eval')
+                new_value = value
         else:
             new_value = value
         return new_value
