@@ -1,11 +1,11 @@
 import sys
 
 from autobahn.websocket import listenWS
-
 from twisted.internet import reactor, ssl
 import twisted.internet.protocol as twistedsockets
 from twisted.python import log
-from rpi_ws.server_protocol import RPIServerProtocol, RPISocketServerFactory, SiteComm, FlashSocketPolicyServerProtocol
+from rpi_ws.server.site_comm import SiteComm
+from rpi_ws.server_protocol import RPIServerProtocol, RPISocketServerFactory
 from twisted.web import server
 
 from rpi_ws import settings

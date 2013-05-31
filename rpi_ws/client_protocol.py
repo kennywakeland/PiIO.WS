@@ -84,7 +84,6 @@ class StreamState(common_protocol.State):
                 #log.err("value['obj'] is None ")
                 self.polldata_write[key] = None
 
-
         if len(self.polldata_read) > 0 or len(self.polldata_write) > 0:
             msg = {'cmd': common_protocol.RPIClientCommands.DATA,
                    'read': self.polldata_read,
