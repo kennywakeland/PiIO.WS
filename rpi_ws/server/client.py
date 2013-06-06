@@ -19,7 +19,7 @@ class Client(common_protocol.ProtocolState):
             state.onMessage(msg)
         except IndexError, e:
             if self.protocol.factory.debug:
-                log.err("%s.onMessage - Received a message in an unknown state, ignored %s" %(self.__class__.__name__ , e))
+                log.err("%s.onMessage - Received a message in an unknown state, ignored %s" % (self.__class__.__name__, e))
 
     def onClose(self, wasClean, code, reason):
         pass

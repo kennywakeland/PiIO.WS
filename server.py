@@ -10,7 +10,7 @@ from twisted.web import server
 
 from rpi_ws import settings
 
-DEBUG = True
+DEBUG = False #True
 
 PROVIDEFLASHSOCKETPOLICYFILE = True
 

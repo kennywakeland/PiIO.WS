@@ -2,7 +2,7 @@
 #from RPiBJ import SPIADC
 # GPIO: http://code.google.com/p/raspberry-gpio-python/
 from glob import glob
-from time import sleep
+from time import sleep, time
 
 from RPi import GPIO
 import mod_io
@@ -166,10 +166,17 @@ class Temperature(IRead):
     IO_CHOICES = temperature_io_choices()
 
     def __init__(self, ch_port):
+        self.temp_value = 0
+        self.update_time_min = 5
+        self.set_update_time()
         super(Temperature, self).__init__(ch_port)
 
     def read(self):
-        return self.read_temp(self.ch_port)
+        if self.can_update():
+            self.temp_value = self.read_temp(self.ch_port)
+            self.set_update_time()
+
+        return self.temp_value
 
     def read_temp_raw(self, device_file):
         f = open(device_file, 'r')
@@ -190,7 +197,20 @@ class Temperature(IRead):
 
         temp_string = temp_raw[1][temp_raw[1].find('t=') + 2:]
         temp_string = temp_string.replace("\n", "").replace(" ", "")
-        return temp_string
+        return int(temp_string)
+
+    def get_time(self):
+        return time()
+
+    def can_update(self):
+        if (self.get_time() - self.update_time) > self.update_time_min:
+            return True
+        else:
+            sleep(0.03)
+            return False
+
+    def set_update_time(self):
+        self.update_time = self.get_time()
 
 
 class MODIO_Digital_Input(IRead):
@@ -262,6 +282,7 @@ class MODIO_Relay_Output(IWrite):
         (2, 'Relay 2'),
         (1, 'Relay 3'),
         (0, 'Relay 4'),
+        (5, 'Relay foo'),
     )
     DEFAULT_VALUE = False
 

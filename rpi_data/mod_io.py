@@ -26,6 +26,10 @@ class MOD_IO(object):
 
     def get_state(self, port_number):
         self.read()
+
+        if port_number > self.number_of_ports:
+            return -1
+
         try:
             return self.ports_state[port_number]
         except IndexError, e:
@@ -53,7 +57,7 @@ class MOD_IO(object):
 class MOD_IO_Relay(MOD_IO):
     def __init__(self, address, number_of_ports=4):
         super(MOD_IO_Relay, self).__init__(address, number_of_ports)
-        self.write()
+        #self.write()
 
     def write(self):
         sleep(self.sleep_time)
@@ -63,7 +67,7 @@ class MOD_IO_Relay(MOD_IO):
     def set_state(self, port_number, port_state):
         port_number = int(port_number)
 
-        if port_state < 0 or port_state > 1:
+        if port_state < 0 or port_state > 1 or port_number > self.number_of_ports :
             return -1
         elif port_state == self.ports_state[port_number]:
             return 2

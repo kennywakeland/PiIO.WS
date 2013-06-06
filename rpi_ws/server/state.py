@@ -21,6 +21,9 @@ class ServerState(common_protocol.State):
         if self.client.protocol.debug:
             log.msg("%s.deactivated()" % self.__class__.__name__)
 
+    def sendJsonMessage(self, msg):
+        self.client.protocol.sendMessage(json.dumps(msg))
+
 
 class RPIRegisterState(ServerState):
     def __init__(self, client):
@@ -56,7 +59,7 @@ class RPIRegisterState(ServerState):
                 self.re_message_count = 0
                 if self.client.protocol.debug:
                     log.msg("RPIClient.onMessage - Successful registration")
-                self.client.protocol.sendMessage(json.dumps({'cmd': common_protocol.ServerCommands.ACK}))
+                self.sendJsonMessage({'cmd': common_protocol.ServerCommands.ACK})
                 self.client.push_state(RPIConfigState(self.client))
                 # add to dictionary of clients in the factory
                 self.client.protocol.factory.register_rpi(self.client)
@@ -77,8 +80,9 @@ class RPIRegisterState(ServerState):
         self.hamc_token = binascii.b2a_base64(hashed.digest())[:-1]
 
         # send token
-        msg = {'cmd': common_protocol.ServerCommands.AUTH, 'payload': {'token': self.rand_token}}
-        self.client.protocol.sendMessage(json.dumps(msg))
+        msg = {'cmd': common_protocol.ServerCommands.AUTH,
+               'payload': {'token': self.rand_token}}
+        self.sendJsonMessage(msg)
 
 
 class RPIConfigState(ServerState):
@@ -158,7 +162,7 @@ class RPIConfigState(ServerState):
         msg = {'cmd': common_protocol.ServerCommands.CONFIG,
                'payload': {'read': self.config_reads, 'write': self.config_writes}}
 
-        self.client.protocol.sendMessage(json.dumps(msg))
+        self.sendJsonMessage(msg)
 
 
 class RPIStreamState(ServerState):
@@ -184,7 +188,7 @@ class RPIStreamState(ServerState):
             x = value
             try:
                 new_value = eval(eq)
-            except :
+            except:
                 if self.client.protocol.debug:
                     log.err('evaluate_eq error  eval')
                 new_value = value
@@ -197,7 +201,7 @@ class RPIStreamState(ServerState):
         self.client.protocol.factory.notify_clients_rpi_state_change(self.client, state='drop_stream')
 
     def activated(self):
-        super(RPIStreamState, self).deactivated()
+        super(RPIStreamState, self).activated()
         self.client.protocol.factory.notify_clients_rpi_state_change(self.client, state='stream')
 
     def onMessage(self, msg):
@@ -253,18 +257,18 @@ class RPIStreamState(ServerState):
                     # notify factory to update listening clients
             if self.datamsgcount_ack >= 5:
                 msg = {'cmd': common_protocol.ServerCommands.ACK_DATA, 'ack_count': self.datamsgcount_ack}
-                self.client.protocol.sendMessage(json.dumps(msg))
+                self.sendJsonMessage(msg)
                 self.datamsgcount_ack = 0
                 # notify factory of new data event
             self.client.protocol.factory.rpi_new_data_event(self.client)
 
     def resume_streaming(self):
         msg = {'cmd': common_protocol.ServerCommands.RESUME_STREAMING}
-        self.client.protocol.sendMessage(json.dumps(msg))
+        self.sendJsonMessage(msg)
 
     def pause_streaming(self):
         msg = {'cmd': common_protocol.ServerCommands.PAUSE_STREAMING}
-        self.client.protocol.sendMessage(json.dumps(msg))
+        self.sendJsonMessage(msg)
 
     def write_interface_data(self, key, value):
         # removes the EQ from the key sent by the client
@@ -272,11 +276,12 @@ class RPIStreamState(ServerState):
         msg = {'cmd': common_protocol.ServerCommands.WRITE_DATA,
                'inter_face_port': config_key,
                'value': value}
-        self.client.protocol.sendMessage(json.dumps(msg))
+
+        self.sendJsonMessage(msg)
 
     def drop_to_config(self, reads, writes):
         # drop remote RPI to config state
         msg = {'cmd': common_protocol.ServerCommands.DROP_TO_CONFIG}
-        self.client.protocol.sendMessage(json.dumps(msg))
+        self.sendJsonMessage(msg)
         self.delegate_config_reads = reads
         self.delegate_config_writes = writes

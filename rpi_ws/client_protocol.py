@@ -19,11 +19,13 @@ class StreamState(common_protocol.State):
         # reads/writes look like this
         # {u'cls:ADC, port:3': {'equations': [u'zzzz', u'asdfadfad'], 'obj': <rpi_data.interface.ADC object at 0x036D18D0>}}
         super(StreamState, self).__init__(protocol)
-        self.config_reads = reads
 
+        self.config_reads = reads
         self.config_writes = writes
+
         self.polldata_read = buffer.UpdateDict()
         self.polldata_write = buffer.UpdateDict()
+
         self.ackcount = 0
         self.paused = True
 
@@ -41,7 +43,7 @@ class StreamState(common_protocol.State):
             self.protocol.pop_state()
 
             resp_msg = {'cmd': common_protocol.RPIClientCommands.DROP_TO_CONFIG_OK}
-            self.protocol.sendMessage(json.dumps(resp_msg))
+            self.sendJsonMessage(resp_msg)
             return
 
         elif msg['cmd'] == common_protocol.ServerCommands.ACK_DATA:
@@ -91,7 +93,8 @@ class StreamState(common_protocol.State):
                   }
 
             self.ackcount -= 1
-            self.protocol.sendMessage(json.dumps(msg))
+            self.sendJsonMessage(msg)
+
 
         reactor.callLater(0, self.poll_and_send)
 
@@ -103,88 +106,81 @@ class StreamState(common_protocol.State):
         self.poll_and_send()
 
 
-class ConfigState(common_protocol.State):
+class Config_Register_State(common_protocol.State):
     """
     Responsible for setting up the IO
     """
 
-    def onMessage(self, msg):
-        msg = json.loads(msg)
+    def __init__(self, protocol):
+        super(Config_Register_State, self).__init__(protocol)
+        self.hmac_reply_expected = False
+        self._send_desc()
 
-        if msg['cmd'] == common_protocol.ServerCommands.CONFIG:
-            reads = msg['payload']['read']
-            writes = msg['payload']['write']
-
-            if self.protocol.factory.debug:
-                log.msg("ConfigState.onMessage - Received configs, %d reads, %d writes"
-                        % (len(reads), len(writes)))
-
-            # attempt to configure IO.......
-            def instantiate_io(io_collection):
-                # instantiate interface instances
-                # {u'cls:ADC, port:3': {'cls_name':'ADC', 'ch_port':3, 'equations': [u'dddd', u'']}}
-                # to:
-                # {u'cls:ADC, port:3': {'cls_name':'ADC', 'ch_port':3, 'equations': [u'dddd', u''], 'obj':<instance>}}
-                for key, value in io_collection.iteritems():
-                    cls_str = value['cls_name']
-                    ch_port = value['ch_port']
-                    if self.protocol.factory.debug:
-                        log.msg('ConfigState - Configuring module %s on ch/port %s' % (cls_str, ch_port))
-
-                    cls = getattr(interface, cls_str)
-
-                    try:
-                        instance = cls(ch_port)
-                        value['obj'] = instance
-                    except Exception, ex:
-                        if self.protocol.factory.debug:
-                            log.err('ConfigState - Ex creating module %s' % str(ex))
-                        value['obj'] = None
-                        #raise
-                        continue
-
-            instantiate_io(reads)
-            instantiate_io(writes)
-
-            if self.protocol.factory.debug:
-                log.msg('ConfigState - Instantiated %d read interfaces' % len(reads))
-                log.msg('ConfigState - Instantiated %d write interfaces' % len(writes))
-
-                log.msg(str(reads))
-
-            # there should be some feedback done here if something fails
-            msg = {'cmd': common_protocol.RPIClientCommands.CONFIG_OK}
-
-            self.protocol.push_state(StreamState(self.protocol, reads=reads, writes=writes))
-            self.protocol.sendMessage(json.dumps(msg))
-
-
-class RegisterState(common_protocol.State):
     def onMessage(self, msg):
         msg = json.loads(msg)
 
         if msg['cmd'] == common_protocol.ServerCommands.AUTH:
             self.token = msg['payload']['token']
             if self.protocol.factory.debug:
-                log.msg("RegisterState.onMessage - Received token %s" % self.token)
+                log.msg("%s.onMessage - Received token %s" % (self.__class__.__name__, self.token))
 
             # compute HMAC reply
             hashed = hmac.new(settings.HMAC_TOKEN, self.protocol.mac + self.token, sha1)
             self.hamc_token = binascii.b2a_base64(hashed.digest())[:-1]
-            reply = {'cmd': common_protocol.ServerCommands.AUTH, 'payload': {'token': self.hamc_token}}
-            self.protocol.sendMessage(json.dumps(reply))
+            reply_msg = {'cmd': common_protocol.ServerCommands.AUTH,
+                         'payload': {'token': self.hamc_token}}
+            self.sendJsonMessage(reply_msg)
             self.hmac_reply_expected = True
             return
 
         if self.hmac_reply_expected and msg['cmd'] == common_protocol.ServerCommands.ACK:
             if self.protocol.factory.debug:
                 log.msg("RegisterState.onMessage - Registration Ack")
-            self.protocol.push_state(ConfigState(self.protocol))
 
-    def __init__(self, protocol):
-        super(RegisterState, self).__init__(protocol)
-        self.hmac_reply_expected = False
-        self._send_desc()
+        if msg['cmd'] == common_protocol.ServerCommands.CONFIG:
+            read_settings = msg['payload']['read']
+            writes_settings = msg['payload']['write']
+
+            if self.protocol.factory.debug:
+                log.msg("ConfigState.onMessage - Received configs, %d reads, %d writes"
+                        % (len(read_settings), len(writes_settings)))
+
+            # attempt to configure IO.......
+            self.instantiate_io(read_settings)
+            self.instantiate_io(writes_settings)
+
+            if self.protocol.factory.debug:
+                log.msg('ConfigState - Instantiated %d read interfaces' % len(read_settings))
+                log.msg('ConfigState - Instantiated %d write interfaces' % len(writes_settings))
+
+            self.protocol.push_state(StreamState(self.protocol, reads=read_settings, writes=writes_settings))
+
+            # there should be some feedback done here if something fails
+            msg = {'cmd': common_protocol.RPIClientCommands.CONFIG_OK}
+            self.sendJsonMessage(msg)
+
+    def instantiate_io(self, io_collection):
+        # instantiate interface instances
+        # {u'cls:ADC, port:3': {'cls_name':'ADC', 'ch_port':3, 'equations': [u'dddd', u'']}}
+        # to:
+        # {u'cls:ADC, port:3': {'cls_name':'ADC', 'ch_port':3, 'equations': [u'dddd', u''], 'obj':<instance>}}
+        for key, value in io_collection.iteritems():
+            cls_str = value['cls_name']
+            ch_port = value['ch_port']
+            if self.protocol.factory.debug:
+                log.msg('ConfigState - Configuring module %s on ch/port %s' % (cls_str, ch_port))
+
+            cls = getattr(interface, cls_str)
+
+            try:
+                instance = cls(ch_port)
+                value['obj'] = instance
+            except Exception, ex:
+                if self.protocol.factory.debug:
+                    log.err('ConfigState - Ex creating module %s' % str(ex))
+                value['obj'] = None
+                #raise
+                continue
 
     def _send_desc(self):
         desc = {'inter_face': {},
@@ -209,7 +205,7 @@ class RegisterState(common_protocol.State):
         for key in self.protocol.interfaces.iterkeys():
             desc['inter_face'][key] = inter_desc(self.protocol.interfaces[key])
 
-        self.protocol.sendMessage(json.dumps(desc))
+        self.sendJsonMessage(desc)
 
 
 class RPIClientProtocol(WebSocketClientProtocol, common_protocol.ProtocolState):
@@ -220,7 +216,7 @@ class RPIClientProtocol(WebSocketClientProtocol, common_protocol.ProtocolState):
 
     def onOpen(self):
         # push the initial state
-        self.push_state(RegisterState(self))
+        self.push_state(Config_Register_State(self))
 
     def onMessage(self, msg, binary):
         try:

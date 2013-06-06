@@ -1,3 +1,4 @@
+import json
 from twisted.python import log
 
 
@@ -22,6 +23,8 @@ class State(object):
         if self.protocol.debug:
             log.msg("%s.deactivated()" % self.__class__.__name__)
 
+    def sendJsonMessage(self, msg):
+        self.protocol.sendMessage(json.dumps(msg))
 
 
 class ServerCommands(object):
